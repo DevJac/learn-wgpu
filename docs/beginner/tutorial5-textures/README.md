@@ -193,11 +193,11 @@ let diffuse_bind_group = device.create_bind_group(
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                resource: wgpu::BindingResource::TextureView(&diffuse_texture_view),
             },
             wgpu::BindGroupEntry {
                 binding: 1,
-                resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
             }
         ],
         label: Some("diffuse_bind_group"),
@@ -256,8 +256,6 @@ render_pass.set_vertex_buffer(0, &self.vertex_buffer.slice(..));
 render_pass.set_index_buffer(&self.index_buffer.slice(..));
 render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
 ```
-
-The order of these statements is important. The pipeline needs to be set first, then the bind groups, vertex buffers, and index buffer, finally the draw call. If you don't do this, you'll likely get a crash.
 
 ## PipelineLayout
 

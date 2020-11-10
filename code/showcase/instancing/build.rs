@@ -41,24 +41,21 @@ impl ShaderData {
 }
 
 fn main() -> Result<()> {
-    // This tells cargo to rerun this script if something in /src/ changes.
-    println!("cargo:rerun-if-changed=src/*");
-
     // Collect all shaders recursively within /src/
-    // UDPATED!
-    let mut shader_paths = Vec::new();
-    shader_paths.extend(glob("./src/**/*.vert")?);
-    shader_paths.extend(glob("./src/**/*.frag")?);
-    shader_paths.extend(glob("./src/**/*.comp")?);
+    let mut shader_paths = [
+        glob("./src/**/*.vert")?,
+        glob("./src/**/*.frag")?,
+        glob("./src/**/*.comp")?,
+    ];
 
-    // UPDATED!
-    // This is parallelized
+    // This could be parallelized
     let shaders = shader_paths
-        .into_par_iter()
+        .iter_mut()
+        .flatten()
         .map(|glob_result| ShaderData::load(glob_result?))
         .collect::<Vec<Result<_>>>()
         .into_iter()
-        .collect::<Result<Vec<_>>>();
+        .collect::<Result<Vec<_>>>()?;
 
     let mut compiler = shaderc::Compiler::new().context("Unable to create shader compiler")?;
 
@@ -67,7 +64,10 @@ fn main() -> Result<()> {
     // spawn multiple processes to handle this, but it would probably
     // be better just to only compile shaders that have been changed
     // recently.
-    for shader in shaders? {
+    for shader in shaders {
+        // This tells cargo to rerun this script if something in /src/ changes.
+        println!("cargo:rerun-if-changed={:?}", shader.src_path);
+
         let compiled = compiler.compile_into_spirv(
             &shader.src,
             shader.kind,
@@ -86,7 +86,10 @@ fn main() -> Result<()> {
     copy_options.overwrite = true;
     let mut paths_to_copy = Vec::new();
     paths_to_copy.push("res/");
-    copy_items(&paths_to_copy, out_dir, &copy_options)?;
+    match copy_items(&paths_to_copy, out_dir, &copy_options) {
+        Ok(_) => {}
+        Err(e) => eprintln!("{}", e),
+    }
 
     Ok(())
 }
